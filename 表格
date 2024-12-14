@@ -1,0 +1,76 @@
+import numpy as np
+from scipy.optimize import minimize
+import pandas as pd
+
+# 固定参数
+A = 1  # 技术系数
+L = 200  # 初始劳动力
+K = 200  # 初始资本
+alpha = 50  # f(M) 的参数
+beta = 0.5  # g(M) 的参数
+M_total = 1000  # 总资金
+b_fixed = 0.5  # 固定资本弹性
+
+# 定义 f(M) 和 g(M)
+def f(M):
+    return alpha * np.log(1 + M)
+
+def g(M):
+    return beta * M / (1 + M)
+
+# 定义生产函数
+def total_output(M1, M2, a, b):
+    labor_effect = (L + f(M2))**(a + g(M2))
+    capital_effect = (K + M1)**b
+    return A * labor_effect * capital_effect
+
+# 优化的目标函数
+def objective(vars, *args):
+    a, b = args  # 提取参数
+    M1, M2 = vars
+    return -total_output(M1, M2, a, b)
+
+# 定义约束条件
+constraints = [
+    {'type': 'eq', 'fun': lambda vars: vars[0] + vars[1] - M_total},  # M1 + M2 = M_total
+    {'type': 'ineq', 'fun': lambda vars: vars[0]},                   # M1 >= 0
+    {'type': 'ineq', 'fun': lambda vars: vars[1]},                   # M2 >= 0
+]
+
+# 初始猜测值
+initial_guess = [M_total / 2, M_total / 2]
+
+# 定义参数范围（仅修改劳动力弹性 a）
+a_values = [0.3, 0.5, 0.7, 0.9]  # 劳动力弹性的变化范围
+
+# 存储结果
+results = []
+
+# 循环优化
+for a in a_values:
+    result = minimize(
+        objective,
+        initial_guess,
+        args=(a, b_fixed),  # 只修改劳动力弹性 a，b 固定为 b_fixed
+        constraints=constraints,
+        bounds=((0, M_total), (0, M_total))
+    )
+    # 提取结果
+    M1_opt, M2_opt = result.x
+    Y_total_opt = -result.fun
+    results.append({
+        "a (劳动力弹性)": a,
+        "b (资本弹性)": b_fixed,
+        "M1_opt (资本分配)": M1_opt,
+        "M2_opt (劳动力分配)": M2_opt,
+        "Y_total_opt (总产出)": Y_total_opt
+    })
+
+# 转为 Pandas 表格
+df_results = pd.DataFrame(results)
+
+# 打印表格
+print(df_results)
+
+# 保存为 CSV 文件
+df_results.to_csv("optimization_results_single_param.csv", index=False)
