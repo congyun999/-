@@ -1,0 +1,69 @@
+import numpy as np
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+
+
+A = 1       # 技术系数
+L = 200     # 初始劳动力
+K = 200     # 初始资本
+a = 0.5     # 劳动力弹性
+b = 0.5     # 资本弹性
+alpha = 50  # f(M) 的参数
+beta = 0.5  # g(M)的参数
+M_total = 1000  # 总资金
+
+# 定义f(M)与g(M)
+def f(M):
+    return alpha * np.log(1 + M)
+
+def g(M):
+    return beta * M / (1 + M)
+
+# 总生产函数
+def total_output(M1, M2):
+    labor_effect = (L + f(M2))**(a + g(M2))
+    capital_effect = (K + M1)**b
+    return A * labor_effect * capital_effect
+
+# 优化的目标函数
+def objective_corrected(vars):
+    M1, M2 = vars
+    return -total_output(M1, M2)
+
+# 约束条件
+constraints_corrected = [
+    {'type': 'eq', 'fun': lambda vars: vars[0] + vars[1] - M_total},  # M1 + M2 = M_total
+    {'type': 'ineq', 'fun': lambda vars: vars[0]},                   # M1 >= 0
+    {'type': 'ineq', 'fun': lambda vars: vars[1]},                   # M2 >= 0
+]
+
+# 猜测初始值
+initial_guess_corrected = [M_total / 2, M_total / 2]
+
+# 优化求解
+result_corrected = minimize(objective_corrected, initial_guess_corrected, constraints=constraints_corrected, bounds=((0, M_total), (0, M_total)))
+
+
+# 提取结果
+M1_opt_corrected, M2_opt_corrected = result_corrected.x
+Y_total_opt_corrected = -result_corrected.fun
+
+# 输出
+M1_opt_corrected, M2_opt_corrected, Y_total_opt_corrected
+
+#画图
+M1_vals = np.linspace(0, M_total, 100)
+M2_vals = M_total - M1_vals
+Y_vals = [Y(M1, M2) for M1, M2 in zip(M1_vals, M2_vals)]
+
+plt.plot(M1_vals, Y_vals)
+plt.xlabel("M1 ")
+plt.ylabel("Y ")
+plt.title("M1andY")
+plt.show()
+
+plt.plot(M2_vals, Y_vals)
+plt.xlabel("M2 ")
+plt.ylabel("Y ")
+plt.title("M2andY")
+plt.show()
